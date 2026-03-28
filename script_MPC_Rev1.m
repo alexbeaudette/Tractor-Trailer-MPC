@@ -25,8 +25,8 @@ path = path_generation(path_type, ux, x_start, y_start, theta_path);
 x_r     = path(:,1);
 y_r     = path(:,2);
 theta_r = path(:,3);
-s_r     = path(:,4);          %#ok<NASGU>
-kappa_r = path(:,5);          %#ok<NASGU>
+s_r     = path(:,4);
+kappa_r = path(:,5);
 dir_r   = path(:,6);
 label_r = path(:,7);
 
@@ -59,6 +59,79 @@ Q_fwd      = parameters.Q_fwd;
 Q_rev      = parameters.Q_rev;
 R          = parameters.R;
 P          = parameters.P;
+
+%% Initial debug plot
+[~, label0, ~] = segment_manager( ...
+    X, x_r, y_r, theta_r, label_r, dir_r, prev_label, switch_flag);
+[~, ~, ~, Ad0, Bd0, Wd0] = truck_trailer_model( ...
+    X, delta_prev, ux, L1, L1c, L2, nu, nx, Ts);
+ref0 = reference_generator( ...
+    X, Ad0, Bd0, Wd0, delta_prev, ux, label0, ...
+    x_r, y_r, theta_r, label_r, dir_r, L1, Llook, N);
+meas0 = get_measurements(X, ux, L1c, L2);
+
+x2_0 = meas0.x2;
+y2_0 = meas0.y2;
+psi2_0 = meas0.psi2;
+x1_0 = meas0.x1;
+y1_0 = meas0.y1;
+psi1_0 = meas0.psi1;
+X_ref0_init = ref0.X_ref0;
+Y_ref0_init = ref0.Y_ref0;
+theta_ref0_init = ref0.theta_ref0;
+psi_err0 = wrapToPi(psi2_0 - theta_ref0_init);
+
+trailer_len = L2;
+tractor_len = L1;
+trailer_w = 2.5;
+tractor_w = 2.5;
+arrow_len = 2.2;
+
+c2x_0 = x2_0 + (trailer_len/2) * cos(psi2_0);
+c2y_0 = y2_0 + (trailer_len/2) * sin(psi2_0);
+[Xt0, Yt0] = get_box_coords(c2x_0, c2y_0, psi2_0, trailer_len, trailer_w);
+
+c1x_0 = x1_0 + (tractor_len/2) * cos(psi1_0);
+c1y_0 = y1_0 + (tractor_len/2) * sin(psi1_0);
+[Xc0, Yc0] = get_box_coords(c1x_0, c1y_0, psi1_0, tractor_len, tractor_w);
+
+figure('Color','k', 'Name', 'Initial Debug');
+ax0 = gca;
+set(ax0, 'Color', 'k', 'XColor', 'w', 'YColor', 'w');
+hold on; grid on; axis equal;
+
+h_refpath0 = plot(x_r, y_r, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1.4);
+h_trailer0 = patch('XData', Xt0, 'YData', Yt0, ...
+    'FaceColor', 'none', 'EdgeColor', [0.92 0.92 0.92], 'LineWidth', 1.8);
+h_tractor0 = patch('XData', Xc0, 'YData', Yc0, ...
+    'FaceColor', [0.20 0.80 1.00], 'FaceAlpha', 0.22, ...
+    'EdgeColor', [0.70 0.95 1.00], 'LineWidth', 1.6);
+h_start0 = plot(x2_0, y2_0, 'o', ...
+    'MarkerSize', 6, 'MarkerFaceColor', [1 1 1], 'MarkerEdgeColor', [1 1 1]);
+h_closest0 = plot(X_ref0_init, Y_ref0_init, 'o', ...
+    'MarkerSize', 6, 'MarkerFaceColor', [1 0.15 0.15], 'MarkerEdgeColor', [1 0.15 0.15]);
+h_line0 = plot([x2_0, X_ref0_init], [y2_0, Y_ref0_init], '-', ...
+    'Color', [1.00 0.90 0.20], 'LineWidth', 1.8);
+h_heading0 = quiver(x2_0, y2_0, arrow_len*cos(psi2_0), arrow_len*sin(psi2_0), 0, ...
+    'Color', [0.10 0.95 1.00], 'LineWidth', 2.0, 'MaxHeadSize', 0.8);
+h_tangent0 = quiver(X_ref0_init, Y_ref0_init, ...
+    arrow_len*cos(theta_ref0_init), arrow_len*sin(theta_ref0_init), 0, ...
+    'Color', [1.00 0.10 1.00], 'LineWidth', 2.0, 'MaxHeadSize', 0.8);
+
+xlabel('X (m)', 'Color', 'w');
+ylabel('Y (m)', 'Color', 'w');
+title(sprintf('Initial Debug | psi error = %.2f deg', rad2deg(psi_err0)), 'Color', 'w');
+legend([h_refpath0, h_trailer0, h_tractor0, h_start0, h_closest0, h_line0, h_heading0, h_tangent0], ...
+    {'Reference Path', 'Trailer', 'Tractor', 'Start Trailer Axle', ...
+     'Closest Pt', 'Closest-Point Line', 'Trailer Heading', 'Path Tangent'}, ...
+    'TextColor', 'w', 'Location', 'northeast');
+
+xmin0 = min([x2_0, x1_0, X_ref0_init, Xt0, Xc0]) - 6;
+xmax0 = max([x2_0, x1_0, X_ref0_init, Xt0, Xc0]) + 6;
+ymin0 = min([y2_0, y1_0, Y_ref0_init, Yt0, Yc0]) - 4;
+ymax0 = max([y2_0, y1_0, Y_ref0_init, Yt0, Yc0]) + 4;
+xlim([xmin0 xmax0]);
+ylim([ymin0 ymax0]);
 
 %% Logs
 logs = struct();
@@ -104,6 +177,9 @@ logs.Y_des     = nan(N, Nsim);
 logs.theta_des = nan(N, Nsim);
 
 % Model matrices
+logs.A = nan(nx, nx, Nsim);
+logs.B = nan(nx, nu, Nsim);
+logs.W = nan(nx, Nsim);
 logs.Ad = nan(nx, nx, Nsim);
 logs.Bd = nan(nx, nu, Nsim);
 logs.Wd = nan(nx, Nsim);
@@ -136,24 +212,33 @@ for k = 1:Nsim
     [mode, label, switch_flag] = segment_manager( ...
         X, x_r, y_r, theta_r, label_r, dir_r, prev_label, switch_flag);
 
-    %% Error calculation
-    [errors, X_ref0, Y_ref0, theta_ref0, i0] = error_calculation( ...
-        X, label, x_r, y_r, theta_r, label_r);
+    %% Linearization and discretization
+    [A, B, W, Ad, Bd, Wd] = truck_trailer_model( ...
+        X, delta_prev, ux, L1, L1c, L2, nu, nx, Ts);
+
+    %% Reference generation
+    ref = reference_generator( ...
+        X, Ad, Bd, Wd, delta_prev, ux, label, ...
+        x_r, y_r, theta_r, label_r, dir_r, L1, Llook, N);
+
+    errors = ref.errors;
+    X_ref0 = ref.X_ref0;
+    Y_ref0 = ref.Y_ref0;
+    theta_ref0 = ref.theta_ref0;
+    i0 = ref.i0;
+    X_des = ref.X_des;
+    Y_des = ref.Y_des;
+    theta_des = ref.theta_des;
+    gamma_ref = ref.gamma_ref;
+    theta_h = ref.theta_h;
+    s_rem = ref.s_rem;
+    sT = ref.sT;
+    iT = ref.iT;
+    theta_goal = ref.theta_goal;
 
     % Debugging
     psi_err = wrapToPi(psi2 - theta_ref0);
     closest_dist = hypot(x2 - X_ref0, y2 - Y_ref0);
-    %% Linearization and discretization
-    [A, B, W] = truck_trailer_linearization(X, delta_prev, ux, L1, L1c, L2);
-    [Ad, Bd, Wd] = truck_trailer_discretization(A, B, W, nu, nx, Ts);
-
-    %% Predictive horizon
-    [X_des, Y_des, theta_des] = predictive_horizon( ...
-        X, Ad, Bd, Wd, delta_prev, label, x_r, y_r, theta_r, label_r, N);
-
-    %% Desired hitch angle
-    [gamma_ref, theta_h, s_rem, sT, iT, theta_goal] = solve_gamma_des( ...
-        x2, y2, psi2, ux, i0, label, x_r, y_r, theta_r, label_r, dir_r, L1, Llook);
 
     %% Direction-dependent Q
     if isempty(mode)
@@ -217,6 +302,9 @@ for k = 1:Nsim
     logs.s_rem(k)      = s_rem;
     logs.sT(k)         = sT;
 
+    logs.A(:,:,k) = A;
+    logs.B(:,:,k) = B;
+    logs.W(:,k)   = W;
     logs.Ad(:,:,k) = Ad;
     logs.Bd(:,:,k) = Bd;
     logs.Wd(:,k)   = Wd;
@@ -239,60 +327,70 @@ end
 %% Plots
 
 t = (0:Nsim-1) * Ts;
+col_ref      = [0.65 0.65 0.65];
+col_path     = [0.20 0.80 1.00];
+col_heading  = [1.00 0.80 0.20];
+col_hitch    = [0.30 1.00 0.50];
+col_limit_hi = [1.00 0.45 0.20];
+col_limit_lo = [1.00 0.20 0.70];
+col_error    = [1.00 0.40 0.40];
+col_mode     = [0.70 0.50 1.00];
+col_i0       = [0.20 0.90 1.00];
+col_iT       = [1.00 0.85 0.25];
 
 % Path tracking
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on; axis equal;
-plot(x_r, y_r, 'w--', 'LineWidth', 1.5);
-plot(logs.x2, logs.y2, 'w', 'LineWidth', 2);
+h_ref = plot(x_r, y_r, '--', 'Color', col_ref, 'LineWidth', 1.5);
+h_path = plot(logs.x2, logs.y2, 'Color', col_path, 'LineWidth', 2);
 xlabel('X [m]', 'Color','w');
 ylabel('Y [m]', 'Color','w');
 title('Path Tracking', 'Color','w');
-legend('Reference Path','Trailer Path','TextColor','w','Location','best');
+legend([h_ref, h_path], {'Reference Path','Trailer Path'}, 'TextColor','w','Location','best');
 
 % Trailer heading vs reference
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, rad2deg(logs.psi2), 'w', 'LineWidth', 1.8);
-plot(t, rad2deg(logs.theta_ref0), 'w--', 'LineWidth', 1.5);
+h_psi2 = plot(t, rad2deg(logs.psi2), 'Color', col_path, 'LineWidth', 1.8);
+h_theta_ref = plot(t, rad2deg(logs.theta_ref0), '--', 'Color', col_heading, 'LineWidth', 1.5);
 xlabel('Time [s]', 'Color','w');
 ylabel('Angle [deg]', 'Color','w');
 title('Trailer Heading Tracking', 'Color','w');
-legend('\psi_2','\theta_{ref,0}','TextColor','w','Location','best');
+legend([h_psi2, h_theta_ref], {'\psi_2','\theta_{ref,0}'}, 'TextColor','w','Location','best');
 xlim([t(1) t(end)]);
 
 % Hitch angle vs reference
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, rad2deg(logs.gamma), 'w', 'LineWidth', 1.8);
-plot(t, rad2deg(logs.gamma_ref), 'w--', 'LineWidth', 1.5);
+h_gamma = plot(t, rad2deg(logs.gamma), 'Color', col_hitch, 'LineWidth', 1.8);
+h_gamma_ref = plot(t, rad2deg(logs.gamma_ref), '--', 'Color', col_heading, 'LineWidth', 1.5);
 xlabel('Time [s]', 'Color','w');
 ylabel('Angle [deg]', 'Color','w');
 title('Hitch Angle Tracking', 'Color','w');
-legend('\gamma','\gamma_{ref}','TextColor','w','Location','best');
+legend([h_gamma, h_gamma_ref], {'\gamma','\gamma_{ref}'}, 'TextColor','w','Location','best');
 xlim([t(1) t(end)]);
 
 % Steering input
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, rad2deg(logs.delta), 'w', 'LineWidth', 1.8);
-yline(rad2deg(delta_umax), 'w--', 'LineWidth', 1.4);
-yline(rad2deg(delta_umin), 'w:',  'LineWidth', 1.8);
+h_delta = plot(t, rad2deg(logs.delta), 'Color', col_path, 'LineWidth', 1.8);
+h_umax = yline(rad2deg(delta_umax), '--', 'Color', col_limit_hi, 'LineWidth', 1.4);
+h_umin = yline(rad2deg(delta_umin), ':', 'Color', col_limit_lo, 'LineWidth', 1.8);
 xlabel('Time [s]', 'Color','w');
 ylabel('Steering [deg]', 'Color','w');
 title('Steering Input', 'Color','w');
-legend('\delta','Upper Limit','Lower Limit','TextColor','w','Location','best');
+legend([h_delta, h_umax, h_umin], {'\delta','Upper Limit','Lower Limit'}, 'TextColor','w','Location','best');
 xlim([t(1) t(end)]);
 
 % Tracking error
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, logs.errors, 'w', 'LineWidth', 1.8);
+plot(t, logs.errors, 'Color', col_error, 'LineWidth', 1.8);
 xlabel('Time [s]', 'Color','w');
 ylabel('Error [m]', 'Color','w');
 title('Tracking Error', 'Color','w');
@@ -302,7 +400,7 @@ xlim([t(1) t(end)]);
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, logs.mode, 'w', 'LineWidth', 1.8);
+plot(t, logs.mode, 'Color', col_mode, 'LineWidth', 1.8);
 xlabel('Time [s]', 'Color','w');
 ylabel('Mode', 'Color','w');
 title('Segment Direction / Mode', 'Color','w');
@@ -312,12 +410,12 @@ xlim([t(1) t(end)]);
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
 hold on; grid on;
-plot(t, logs.i0, 'w', 'LineWidth', 1.8);
-plot(t, logs.iT, 'w--', 'LineWidth', 1.5);
+h_i0 = plot(t, logs.i0, 'Color', col_i0, 'LineWidth', 1.8);
+h_iT = plot(t, logs.iT, '--', 'Color', col_iT, 'LineWidth', 1.5);
 xlabel('Time [s]', 'Color','w');
 ylabel('Path Index', 'Color','w');
 title('Closest-Point and Lookahead Indices', 'Color','w');
-legend('i0','iT','TextColor','w','Location','best');
+legend([h_i0, h_iT], {'i0','iT'}, 'TextColor','w','Location','best');
 xlim([t(1) t(end)]);
 
 %% Animation for Tractor-Trailer Boxes

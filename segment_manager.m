@@ -32,7 +32,7 @@ if isempty(seg_inds)
     label = prev_label;
 else
     % Closest point on current segment using helper
-    [~, ~, S0, ~] = distance_calc(X2, Y2, prev_label, x_r, y_r, theta_r, label_r);
+    [~, ~, S0, ~] = closest_point_on_segment(X2, Y2, prev_label, x_r, y_r, theta_r, label_r);
 
     % End of current segment
     S_end = [x_r(seg_inds(end)); y_r(seg_inds(end))];
@@ -68,4 +68,29 @@ else
     end
 end
 
+end
+
+function [theta_ref, distance, S_ref, i0] = closest_point_on_segment(x_point, y_point, label, x_r, y_r, theta_r, labels_r)
+% Local closest-point helper to keep segment switching self-contained.
+
+idx = find(labels_r == label);
+
+if isempty(idx)
+    theta_ref = 0;
+    distance = inf;
+    S_ref = [x_point; y_point];
+    i0 = 1;
+    return
+end
+
+x_seg = x_r(idx);
+y_seg = y_r(idx);
+th_seg = theta_r(idx);
+
+distances = sqrt((x_seg - x_point).^2 + (y_seg - y_point).^2);
+[distance, k] = min(distances);
+
+theta_ref = th_seg(k);
+S_ref = [x_seg(k); y_seg(k)];
+i0 = idx(k);
 end

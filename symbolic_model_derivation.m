@@ -82,17 +82,21 @@ B = simplify(subs(B_sym, [x_trailer; u], [x0; u0]));
 W = simplify(subs(f_trailer, [x_trailer; u], [x0; u0]) - A*x0 - B*u0);
 
 %% ---------------- Generate MATLAB functions ----------------
+% The runtime project now keeps these generated expressions inside
+% truck_trailer_model.m as local subfunctions for a compact module layout.
+% If you want fresh standalone generated files for inspection, uncomment
+% the matlabFunction calls below and merge the results back into that file.
+%
+% matlabFunction(A, 'File', 'A_Matrix', ...
+%     'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
+%
+% matlabFunction(B, 'File', 'B_Matrix', ...
+%     'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
+%
+% matlabFunction(W, 'File', 'W_Matrix', ...
+%     'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
+%
+% matlabFunction(f_trailer, 'File', 'f_tractor_trailer', ...
+%     'Vars', {X2, Y2, psi2, gamma, delta, u1, L1, L1c, L2});
 
-matlabFunction(A, 'File', 'A_Matrix', ...
-    'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
-
-matlabFunction(B, 'File', 'B_Matrix', ...
-    'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
-
-matlabFunction(W, 'File', 'W_Matrix', ...
-    'Vars', {L1, L1c, L2, delta0, psi20, gamma0, u1});
-
-matlabFunction(f_trailer, 'File', 'f_tractor_trailer', ...
-    'Vars', {X2, Y2, psi2, gamma, delta, u1, L1, L1c, L2});
-
-disp('Symbolic derivation complete.');
+disp('Symbolic derivation complete. Generated expressions live in truck_trailer_model.m.');
