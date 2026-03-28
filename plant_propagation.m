@@ -31,13 +31,12 @@ function X_next = plant_propagation(X, delta, ux)
     psi2  = wrapToPi(X(3));
     gamma = wrapToPi(X(4));
 
-    % Reconstruct tractor heading
-    psi1 = wrapToPi(psi2 + gamma);
-
-    % Truck-trailer kinematics
-    x2_dot    = ux * cos(psi1) * cos(gamma) + (L1c / L2) * ux * sin(psi1) * sin(gamma);
-    y2_dot    = ux * sin(psi1) * cos(gamma) - (L1c / L2) * ux * cos(psi1) * sin(gamma);
-    psi2_dot  = (ux / L2) * sin(gamma) - (L1c / L2) * (ux / L1) * tan(delta) * cos(gamma);
+    % Use the same trailer-state kinematics as the linearized MPC model.
+    % This keeps the trailer rear axle velocity tangent to psi2.
+    trailer_speed = (ux / L1) * (L1 * cos(gamma) - L1c * tan(delta) * sin(gamma));
+    x2_dot    = trailer_speed * cos(psi2);
+    y2_dot    = trailer_speed * sin(psi2);
+    psi2_dot  = (ux / L2) * sin(gamma) + (L1c / L2) * (ux / L1) * tan(delta) * cos(gamma);
     gamma_dot = (ux / L1) * tan(delta) - psi2_dot;
 
     % Forward Euler integration

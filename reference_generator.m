@@ -3,7 +3,8 @@ function ref = reference_generator(X0, Ad, Bd, Wd, U0, ux, label, x_r, y_r, thet
 
 [errors, X_ref0, Y_ref0, theta_ref0, i0] = error_calculation(X0, label, x_r, y_r, theta_r, label_r);
 [X_des, Y_des, theta_des] = predictive_horizon(X0, Ad, Bd, Wd, U0, label, x_r, y_r, theta_r, label_r, N);
-[gamma_ref, theta_h, s_rem, sT, iT, theta_goal] = solve_gamma_des( ...
+[gamma_ref, theta_h, s_rem, sT, iT, theta_goal, theta_pathT, ...
+    heading_err_ref, ref_mode, X_refT, Y_refT] = solve_gamma_des( ...
     X0(1), X0(2), X0(3), ux, i0, label, x_r, y_r, theta_r, label_r, dir_r, L1, Llook);
 
 ref = struct( ...
@@ -20,7 +21,12 @@ ref = struct( ...
     's_rem', s_rem, ...
     'sT', sT, ...
     'iT', iT, ...
-    'theta_goal', theta_goal);
+    'theta_goal', theta_goal, ...
+    'theta_pathT', theta_pathT, ...
+    'heading_err_ref', heading_err_ref, ...
+    'ref_mode', ref_mode, ...
+    'X_refT', X_refT, ...
+    'Y_refT', Y_refT);
 end
 
 function [errors, X_ref0, Y_ref0, theta_ref0, i0] = error_calculation(X0, label, x_r, y_r, theta_r, label_r)
@@ -75,7 +81,8 @@ for k = 1:N
 end
 end
 
-function [gamma_ref, theta_h, s_rem, sT, iT, theta_goal] = solve_gamma_des( ...
+function [gamma_ref, theta_h, s_rem, sT, iT, theta_goal, theta_pathT, ...
+    heading_err_ref, ref_mode, X_refT, Y_refT] = solve_gamma_des( ...
     x2, y2, psi2, ux, i0, label, x_r, y_r, theta_r, label_r, dir_r, L1, Llook)
 
 psi2 = wrapToPi(psi2);
@@ -86,6 +93,11 @@ s_rem = 0;
 sT = 0;
 iT = i0;
 theta_goal = 0;
+theta_pathT = 0;
+heading_err_ref = 0;
+ref_mode = 0;
+X_refT = x2;
+Y_refT = y2;
 
 idx = find(label_r == label);
 if isempty(idx)
@@ -109,21 +121,15 @@ ds = sqrt(diff(x_seg).^2 + diff(y_seg).^2);
 s_seg = [0; cumsum(ds)];
 s0 = s_seg(i0_local);
 
-theta0 = theta_seg(i0_local);
-t_hat = [cos(theta0); sin(theta0)];
-v_hat = [cos(psi2); sin(psi2)];
-
-dirSign = sign(t_hat.' * v_hat);
-if dirSign == 0
-    dirSign = 1;
+dir_cmd = dir_r(i0);
+if dir_cmd == 0
+    dir_cmd = sign(ux);
+end
+if dir_cmd == 0
+    dir_cmd = 1;
 end
 
-motionSign = sign(ux);
-if motionSign == 0
-    motionSign = 1;
-end
-
-sT = s0 + (motionSign * dirSign) * Llook;
+sT = s0 + dir_cmd * Llook;
 sT = max(min(sT, s_seg(end)), s_seg(1));
 
 [~, iT_local] = min(abs(s_seg - sT));
@@ -131,15 +137,16 @@ iT = idx(iT_local);
 
 x_ref = x_r(iT);
 y_ref = y_r(iT);
+theta_pathT = wrapToPi(theta_r(iT));
+X_refT = x_ref;
+Y_refT = y_ref;
 
-dxT = x_ref - x2;
-dyT = y_ref - y2;
-theta_goal = atan2(dyT, dxT);
+theta_goal = atan2(y_ref - y2, x_ref - x2);
 theta_h = wrapToPi(theta_goal - psi2);
+heading_err_ref = theta_h;
+ref_mode = dir_cmd;
 
-dir_cmd = dir_r(i0);
-sigma = dir_cmd * dirSign;
-if sigma >= 0
+if dir_cmd >= 0
     s_rem = s_seg(end) - s0;
 else
     s_rem = s0 - s_seg(1);

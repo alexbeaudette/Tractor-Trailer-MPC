@@ -6,7 +6,7 @@ classdef parameters
         L1 = 3.261;          % wheelbase of truck
         L1c = parameters.L1 - 3; % length between hitch point and rear axle of truck
         L2 = 10.0;           % length of trailer
-        Llook = 2.0;         % lookahead distance for gamma_ref
+        Llook = 8.0;         % lookahead distance for gamma_ref
 
         % Sampling time
         Ts = 0.01;
@@ -14,7 +14,7 @@ classdef parameters
         % MPC dimensions
         nx = 4;   % states: [X2; Y2; psi2; gamma]
         nu = 1;   % steering input
-        N  = 15;  % prediction horizon
+        N  = 40;  % prediction horizon
 
         % Constraints
         umin = -pi/6;
