@@ -19,6 +19,7 @@ x_start = -13.006;
 y_start = -2;
 theta_path = -15;
 
+
 % Generate path
 path = path_generation(path_type, ux, x_start, y_start, theta_path);
 
