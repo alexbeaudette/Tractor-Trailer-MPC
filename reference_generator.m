@@ -129,7 +129,18 @@ if dir_cmd == 0
     dir_cmd = 1;
 end
 
-sT = s0 + dir_cmd * Llook;
+theta_idx = segment_index_heading(x_seg, y_seg, i0_local);
+heading_alignment = sign(cos(wrapToPi(theta_seg(i0_local) - theta_idx)));
+if heading_alignment == 0
+    heading_alignment = 1;
+end
+
+progress_sign = dir_cmd * heading_alignment;
+if progress_sign == 0
+    progress_sign = 1;
+end
+
+sT = s0 + progress_sign * Llook;
 sT = max(min(sT, s_seg(end)), s_seg(1));
 
 [~, iT_local] = min(abs(s_seg - sT));
@@ -144,14 +155,13 @@ Y_refT = y_ref;
 theta_goal = atan2(y_ref - y2, x_ref - x2);
 theta_h = wrapToPi(theta_goal - psi2);
 heading_err_ref = theta_h;
-ref_mode = dir_cmd;
+ref_mode = progress_sign;
 
-if dir_cmd >= 0
+if progress_sign >= 0
     s_rem = s_seg(end) - s0;
 else
     s_rem = s0 - s_seg(1);
 end
-
 s_rem = max(0, s_rem);
 
 if s_rem < Llook
@@ -162,4 +172,16 @@ end
 
 gamma_ref_max = deg2rad(45);
 gamma_ref = max(min(gamma_ref, gamma_ref_max), -gamma_ref_max);
+end
+
+function theta_idx = segment_index_heading(x_seg, y_seg, i_local)
+if i_local < numel(x_seg)
+    dx = x_seg(i_local + 1) - x_seg(i_local);
+    dy = y_seg(i_local + 1) - y_seg(i_local);
+else
+    dx = x_seg(i_local) - x_seg(i_local - 1);
+    dy = y_seg(i_local) - y_seg(i_local - 1);
+end
+
+theta_idx = atan2(dy, dx);
 end

@@ -6,7 +6,7 @@ classdef parameters
         L1 = 3.261;          % wheelbase of truck
         L1c = parameters.L1 - 3; % length between hitch point and rear axle of truck
         L2 = 10.0;           % length of trailer
-        Llook = 8.0;         % lookahead distance for gamma_ref
+        Llook = 2.0;         % lookahead distance for gamma_ref
 
         % Sampling time
         Ts = 0.01;

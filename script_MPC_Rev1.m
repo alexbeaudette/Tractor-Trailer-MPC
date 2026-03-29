@@ -24,17 +24,18 @@ end
 addpath(qpoases_dir)
 
 %% Vehicle / simulation settings
-ux = 1.0;                     % constant longitudinal speed [m/s]
-Nsim = 10000;                   % number of simulation steps
+ux = -1.0;                    % constant longitudinal speed [m/s]
+Nsim = 8000;                   % number of simulation steps
 save_debug_outputs = true;     % save logs and plots for offline diagnosis
 
 %% Path definition
-path_type = "line";           % "merge", "line", "circle", "figure8", "parkingfr"
+path_type = "merge";           % "merge", "line", "circle", "figure8", "parkingfr"
+init_mode = "manual";        % "on_path" or "manual"
 
 % Initial path anchoring
 x_start = -13.006;
-y_start = 0;
-theta_path = 15;
+y_start = 1;
+theta_path = -5;
 
 
 % Generate path
@@ -55,7 +56,6 @@ X(1) = -13.261;
 X(2) = 0;
 X(3) = deg2rad(0);
 X(4) = deg2rad(0);
-X_init = X;
 
 delta_prev = 0;
 prev_label = 1;
@@ -78,6 +78,17 @@ Q_fwd      = parameters.Q_fwd;
 Q_rev      = parameters.Q_rev;
 R          = parameters.R;
 P          = parameters.P;
+
+if init_mode == "on_path"
+    [X, i_init] = initialize_on_path_state(X, prev_label, x_r, y_r, theta_r, label_r);
+    delta_prev = 0;
+    prev_label = label_r(i_init);
+    switch_flag = 0;
+elseif init_mode ~= "manual"
+    error('Unknown init_mode: %s', init_mode);
+end
+
+X_init = X;
 
 %% Initial debug plot
 [~, label0, ~] = segment_manager( ...
@@ -653,50 +664,53 @@ legend(ax_progress, [h_dash_i0, h_dash_iT, h_dash_iN], ...
 xlim(ax_progress, [t(1) t(end)]);
 
 % MPC intent spatial snapshot
-fig_intent = figure('Color','k', 'Name', 'MPC Intent');
+fig_intent = figure('Color','k', 'Name', 'MPC Intent', 'Position', [120 120 1400 850]);
 ax_intent = axes(fig_intent);
 render_mpc_intent_snapshot(ax_intent, intent_step, logs, x_r, y_r, ...
     tractor_len, trailer_len, tractor_w, trailer_w, arrow_len, intent_bounds, Ts);
 
 %% Animation for Tractor-Trailer Boxes
 
-figure('Name','Tractor-Trailer Animation','Color','k');
-grid on; axis equal; hold on;
-set(gca, 'Color', 'k', 'XColor', 'w', 'YColor', 'w');
+fig_anim = figure('Name','Tractor-Trailer Animation','Color','k');
+ax_anim = axes(fig_anim);
+hold(ax_anim, 'on');
+grid(ax_anim, 'on');
+axis(ax_anim, 'equal');
+set(ax_anim, 'Color', 'k', 'XColor', 'w', 'YColor', 'w');
 
-plot(x_r, y_r, 'w--', 'LineWidth', 1.0);
+h_ref_anim = plot(ax_anim, x_r, y_r, 'w--', 'LineWidth', 1.0);
 
-xlabel('X (m)', 'Color', 'w');
-ylabel('Y (m)', 'Color', 'w');
-title('Animation: Vehicle Tracking Over Time', 'Color', 'w');
+xlabel(ax_anim, 'X (m)', 'Color', 'w');
+ylabel(ax_anim, 'Y (m)', 'Color', 'w');
+title(ax_anim, 'Animation: Vehicle Tracking Over Time', 'Color', 'w');
 
 % Initialize graphic objects
-h_traj = plot(nan, nan, 'w', 'LineWidth', 1.5);
-h_closest = plot(nan, nan, 'o', ...
+h_traj = plot(ax_anim, nan, nan, 'w', 'LineWidth', 1.5);
+h_closest = plot(ax_anim, nan, nan, 'o', ...
                  'MarkerSize', 6, ...
                  'MarkerFaceColor', [1.00 0.25 0.25], ...
                  'MarkerEdgeColor', [1.00 0.25 0.25]);
-h_lookahead = plot(nan, nan, 'o', ...
+h_lookahead = plot(ax_anim, nan, nan, 'o', ...
                    'MarkerSize', 6, ...
                    'MarkerFaceColor', [0.20 0.95 1.00], ...
                    'MarkerEdgeColor', [0.20 0.95 1.00]);
-h_ref_horizon = plot(nan, nan, '--o', ...
+h_ref_horizon = plot(ax_anim, nan, nan, '--o', ...
                      'Color', [1.00 0.45 0.25], ...
                      'LineWidth', 1.4, ...
                      'MarkerSize', 3, ...
                      'MarkerFaceColor', [1.00 0.45 0.25], ...
                      'MarkerEdgeColor', [1.00 0.45 0.25]);
-h_pred_horizon = plot(nan, nan, '-o', ...
+h_pred_horizon = plot(ax_anim, nan, nan, '-o', ...
                       'Color', [0.25 0.95 0.55], ...
                       'LineWidth', 1.6, ...
                       'MarkerSize', 3, ...
                       'MarkerFaceColor', [0.25 0.95 0.55], ...
                       'MarkerEdgeColor', [0.25 0.95 0.55]);
-h_closest_line = plot(nan, nan, ':', 'Color', [1.00 0.35 0.35], 'LineWidth', 1.4);
-h_look_line = plot(nan, nan, '-', 'Color', [1.00 0.90 0.20], 'LineWidth', 1.5);
-h_look_tangent = quiver(nan, nan, nan, nan, 0, ...
+h_closest_line = plot(ax_anim, nan, nan, ':', 'Color', [1.00 0.35 0.35], 'LineWidth', 1.4);
+h_look_line = plot(ax_anim, nan, nan, '-', 'Color', [1.00 0.90 0.20], 'LineWidth', 1.5);
+h_look_tangent = quiver(ax_anim, nan, nan, nan, nan, 0, ...
                         'Color', [1.00 0.10 1.00], 'LineWidth', 1.8, 'MaxHeadSize', 0.8);
-h_status = text(0.02, 0.98, '', ...
+h_status = text(ax_anim, 0.02, 0.98, '', ...
                 'Units', 'normalized', ...
                 'HorizontalAlignment', 'left', ...
                 'VerticalAlignment', 'top', ...
@@ -704,17 +718,25 @@ h_status = text(0.02, 0.98, '', ...
                 'FontName', 'Consolas', ...
                 'FontSize', 10);
 
-h_trailer = patch('XData', nan(1,4), 'YData', nan(1,4), ...
+h_trailer = patch(ax_anim, 'XData', nan(1,4), 'YData', nan(1,4), ...
                   'FaceColor', [0.7 0.7 0.7], ...
                   'FaceAlpha', 0.35, ...
                   'EdgeColor', 'w', ...
                   'LineWidth', 1.2);
 
-h_tractor = patch('XData', nan(1,4), 'YData', nan(1,4), ...
+h_tractor = patch(ax_anim, 'XData', nan(1,4), 'YData', nan(1,4), ...
                   'FaceColor', [0.3 0.8 1.0], ...
                   'FaceAlpha', 0.35, ...
                   'EdgeColor', 'w', ...
                   'LineWidth', 1.2);
+
+legend(ax_anim, [h_ref_anim, h_traj, h_ref_horizon, h_pred_horizon, ...
+    h_closest, h_lookahead, h_closest_line, h_look_line, ...
+    h_look_tangent, h_trailer, h_tractor], ...
+    {'Reference Path', 'Trailer Path', 'Horizon Reference', 'Open-Loop Prediction', ...
+     'Closest Point', 'Lookahead Point', 'To Closest Point', 'To Lookahead Point', ...
+     'Lookahead Travel Dir', 'Trailer Body', 'Tractor Body'}, ...
+    'TextColor', 'w', 'Location', 'bestoutside', 'AutoUpdate', 'off');
 
 % Vehicle dimensions
 tractor_len = parameters.L1;
@@ -726,11 +748,13 @@ trailer_w   = 2.5;
 cam_w = 25;
 cam_h = 18;
 
-% Animation step
-skip = 5;
+% Animation playback controls
+animation_stride = 20;
+animation_speed = 10.0;
 arrow_len_anim = 2.0;
 
-for k = 1:skip:num_steps
+for k = 1:animation_stride:num_steps
+    frame_start = tic;
 
     % Current poses
     x1 = logs.x1(k);
@@ -745,6 +769,8 @@ for k = 1:skip:num_steps
     xrT = logs.X_refT(k);
     yrT = logs.Y_refT(k);
     thT = logs.theta_pathT(k);
+    travel_sign = infer_travel_sign(logs, k);
+    thT_travel = travel_heading(thT, travel_sign);
     x_ref_h = logs.X_des(:,k);
     y_ref_h = logs.Y_des(:,k);
     x_pred_h = logs.x2_pred(:,k);
@@ -760,8 +786,8 @@ for k = 1:skip:num_steps
     set(h_closest_line, 'XData', [x2, xr0], 'YData', [y2, yr0]);
     set(h_look_line, 'XData', [x2, xrT], 'YData', [y2, yrT]);
     set(h_look_tangent, 'XData', xrT, 'YData', yrT, ...
-        'UData', arrow_len_anim * cos(thT), ...
-        'VData', arrow_len_anim * sin(thT));
+        'UData', arrow_len_anim * cos(thT_travel), ...
+        'VData', arrow_len_anim * sin(thT_travel));
     set(h_status, 'String', sprintf([ ...
         'k = %d (t = %.2f s)\n' ...
         'i0 = %d | iT = %d | iN = %d\n' ...
@@ -782,11 +808,14 @@ for k = 1:skip:num_steps
     set(h_tractor, 'XData', Xc, 'YData', Yc);
 
     % Follow camera around trailer
-    xlim([x2 - cam_w, x2 + cam_w]);
-    ylim([y2 - cam_h, y2 + cam_h]);
+    xlim(ax_anim, [x2 - cam_w, x2 + cam_w]);
+    ylim(ax_anim, [y2 - cam_h, y2 + cam_h]);
 
-    title(sprintf('Animation: Vehicle Tracking Over Time | k = %d', k), 'Color', 'w');
-    drawnow limitrate;
+    title(ax_anim, sprintf('Animation: Vehicle Tracking Over Time | k = %d', k), 'Color', 'w');
+    drawnow;
+
+    frame_duration = animation_stride * Ts / animation_speed;
+    pause(max(0, frame_duration - toc(frame_start)));
 end
 
 %% Optional debug export
@@ -800,6 +829,7 @@ if save_debug_outputs
 
     run_info = struct();
     run_info.path_type = path_type;
+    run_info.init_mode = init_mode;
     run_info.ux = ux;
     run_info.Nsim = Nsim;
     run_info.x_start = x_start;
@@ -867,6 +897,23 @@ function [X, Y] = get_box_coords(cx, cy, psi, len, wid)
     Pw = R * P + [cx; cy];
     X = Pw(1,:);
     Y = Pw(2,:);
+end
+
+function [X_init, i_init] = initialize_on_path_state(X_seed, start_label, x_r, y_r, theta_r, label_r)
+    idx = find(label_r == start_label);
+    if isempty(idx)
+        idx = (1:numel(x_r)).';
+    end
+
+    distances = hypot(x_r(idx) - X_seed(1), y_r(idx) - X_seed(2));
+    [~, local_idx] = min(distances);
+    i_init = idx(local_idx);
+
+    X_init = X_seed;
+    X_init(1) = x_r(i_init);
+    X_init(2) = y_r(i_init);
+    X_init(3) = wrapToPi(theta_r(i_init));
+    X_init(4) = 0;
 end
 
 function logs = build_intent_debug_logs(logs, num_steps, x_r, y_r, umax)
@@ -1017,6 +1064,9 @@ function render_mpc_intent_snapshot(ax, k, logs, x_r, y_r, tractor_len, trailer_
     yrT = logs.Y_refT(k);
     th0 = logs.theta_ref0(k);
     thT = logs.theta_pathT(k);
+    travel_sign = infer_travel_sign(logs, k);
+    th0_travel = travel_heading(th0, travel_sign);
+    thT_travel = travel_heading(thT, travel_sign);
 
     h_ref = plot(ax, x_r, y_r, '--', 'Color', [0.70 0.70 0.70], 'LineWidth', 1.4);
     h_actual = plot(ax, logs.x2(1:k), logs.y2(1:k), 'Color', [0.20 0.80 1.00], 'LineWidth', 2.0);
@@ -1034,9 +1084,9 @@ function render_mpc_intent_snapshot(ax, k, logs, x_r, y_r, tractor_len, trailer_
         'MarkerFaceColor', [0.20 0.95 1.00], 'MarkerEdgeColor', [0.20 0.95 1.00]);
     h_closest_line = plot(ax, [x2, xr0], [y2, yr0], ':', 'Color', [1.00 0.35 0.35], 'LineWidth', 1.4);
     h_look_line = plot(ax, [x2, xrT], [y2, yrT], '-', 'Color', [1.00 0.90 0.20], 'LineWidth', 1.5);
-    h_tangent0 = quiver(ax, xr0, yr0, arrow_len * cos(th0), arrow_len * sin(th0), 0, ...
+    h_tangent0 = quiver(ax, xr0, yr0, arrow_len * cos(th0_travel), arrow_len * sin(th0_travel), 0, ...
         'Color', [1.00 0.10 1.00], 'LineWidth', 1.6, 'MaxHeadSize', 0.8);
-    h_tangentT = quiver(ax, xrT, yrT, arrow_len * cos(thT), arrow_len * sin(thT), 0, ...
+    h_tangentT = quiver(ax, xrT, yrT, arrow_len * cos(thT_travel), arrow_len * sin(thT_travel), 0, ...
         'Color', [0.25 0.95 0.55], 'LineWidth', 1.6, 'MaxHeadSize', 0.8);
 
     c2x = x2 + (trailer_len/2) * cos(psi2);
@@ -1066,9 +1116,11 @@ function render_mpc_intent_snapshot(ax, k, logs, x_r, y_r, tractor_len, trailer_
         'i0 = %d\n' ...
         'iT = %d\n' ...
         'iN = %d\n' ...
+        'ref mode = %+d\n' ...
         'signed CTE = %.3f m\n' ...
         'along-track = %.3f m'], ...
-        logs.i0(k), logs.iT(k), logs.iN_ref(k), logs.signed_cte(k), logs.along_track_err(k));
+        logs.i0(k), logs.iT(k), logs.iN_ref(k), travel_sign, ...
+        logs.signed_cte(k), logs.along_track_err(k));
     text(ax, 0.02, 0.98, info_text, ...
         'Units', 'normalized', ...
         'HorizontalAlignment', 'left', ...
@@ -1081,10 +1133,56 @@ function render_mpc_intent_snapshot(ax, k, logs, x_r, y_r, tractor_len, trailer_
         h_closest_line, h_look_line, h_tangent0, h_tangentT, h_trailer, h_tractor], ...
         {'Reference Path', 'Trailer Path', 'Horizon Reference', 'Open-Loop Prediction', ...
          'Current Trailer Axle', 'Closest Point', 'Lookahead Point', ...
-         'To Closest Point', 'To Lookahead Point', 'Closest Tangent', ...
-         'Lookahead Tangent', 'Trailer Body', 'Tractor Body'}, ...
+         'To Closest Point', 'To Lookahead Point', 'Closest Travel Dir', ...
+         'Lookahead Travel Dir', 'Trailer Body', 'Tractor Body'}, ...
         'TextColor', 'w', 'Location', 'bestoutside');
 
-    xlim(ax, bounds.x);
-    ylim(ax, bounds.y);
+    snapshot_bounds = compute_snapshot_plot_bounds(logs, k, xr0, yr0, xrT, yrT, 4, 6);
+    xlim(ax, snapshot_bounds.x);
+    ylim(ax, snapshot_bounds.y);
+end
+
+function travel_sign = infer_travel_sign(logs, k)
+    candidates = [logs.ref_mode(k), logs.mode(k), sign(logs.ux(k))];
+    travel_sign = 1;
+    for i = 1:numel(candidates)
+        candidate = candidates(i);
+        if isfinite(candidate) && candidate ~= 0
+            travel_sign = sign(candidate);
+            return
+        end
+    end
+end
+
+function theta_travel = travel_heading(theta_path, travel_sign)
+    theta_travel = wrapToPi(theta_path);
+    if isfinite(travel_sign) && travel_sign < 0
+        theta_travel = wrapToPi(theta_travel + pi);
+    end
+end
+
+function bounds = compute_snapshot_plot_bounds(logs, k, xr0, yr0, xrT, yrT, margin, min_half_height)
+    x_all = [logs.x2(k); logs.x1(k); xr0; xrT; logs.X_des(:,k); logs.x2_pred(:,k)];
+    y_all = [logs.y2(k); logs.y1(k); yr0; yrT; logs.Y_des(:,k); logs.y2_pred(:,k)];
+
+    x_all = x_all(isfinite(x_all));
+    y_all = y_all(isfinite(y_all));
+
+    if isempty(x_all)
+        x_all = 0;
+    end
+
+    if isempty(y_all)
+        y_all = 0;
+    end
+
+    x_center = 0.5 * (min(x_all) + max(x_all));
+    y_center = 0.5 * (min(y_all) + max(y_all));
+
+    half_width = max(0.5 * (max(x_all) - min(x_all)) + margin, 8);
+    half_height = max(0.5 * (max(y_all) - min(y_all)) + margin, min_half_height);
+
+    bounds = struct();
+    bounds.x = [x_center - half_width, x_center + half_width];
+    bounds.y = [y_center - half_height, y_center + half_height];
 end
