@@ -170,7 +170,7 @@ else
     gamma_ref = atan2(2 * L1 * sin(theta_h), Llook);
 end
 
-gamma_ref_max = deg2rad(45);
+gamma_ref_max = deg2rad(35);
 gamma_ref = max(min(gamma_ref, gamma_ref_max), -gamma_ref_max);
 end
 

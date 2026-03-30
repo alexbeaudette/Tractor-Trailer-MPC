@@ -6,7 +6,7 @@ classdef parameters
         L1 = 3.261;          % wheelbase of truck
         L1c = parameters.L1 - 3; % length between hitch point and rear axle of truck
         L2 = 10.0;           % length of trailer
-        Llook = 2.0;         % lookahead distance for gamma_ref
+        Llook = 8.0;         % lookahead distance for gamma_ref
 
         % Sampling time
         Ts = 0.01;
@@ -27,7 +27,7 @@ classdef parameters
 
         % Cost weights
         % States: [X2; Y2; psi2; gamma]
-        Q_fwd = diag([100, 100, 50, 50]);
+        Q_fwd = diag([100, 200, 90, 50]);
         Q_rev = diag([100, 100, 50, 200]);
         R = 1;
         P = 50;
