@@ -25,18 +25,18 @@ end
 addpath(qpoases_dir)
 
 %% Vehicle / simulation settings
-ux = -1.0;                    % constant longitudinal speed [m/s]
+ux = 1.0;                    % constant longitudinal speed [m/s]
 Nsim = 8000;                   % number of simulation steps
 save_debug_outputs = true;     % save logs and plots for offline diagnosis
 
 %% Path definition
-path_type = "line";           % "merge", "line", "circle", "figure8", "parkingfr"
+path_type = "merge";           % "merge", "line", "circle", "figure8", "parkingfr"
 init_mode = "manual";        % "on_path" or "manual"
 
 % Initial path anchoring
 x_start = -13.006;
 y_start = 2;
-theta_path = 5;
+theta_path = -5;
 
 
 % Generate path
@@ -92,6 +92,7 @@ end
 X_init = X;
 
 %% Initial debug plot
+%{
 [~, label0, ~] = segment_manager( ...
     X, x_r, y_r, theta_r, label_r, dir_r, prev_label, switch_flag);
 [~, ~, ~, Ad0, Bd0, Wd0] = truck_trailer_model( ...
@@ -163,6 +164,7 @@ ymin0 = min([y2_0, y1_0, Y_ref0_init, Yt0, Yc0]) - 4;
 ymax0 = max([y2_0, y1_0, Y_ref0_init, Yt0, Yc0]) + 4;
 xlim([xmin0 xmax0]);
 ylim([ymin0 ymax0]);
+%}
 
 %% Logs
 logs = struct();
@@ -452,6 +454,7 @@ col_mode     = [0.70 0.50 1.00];
 col_i0       = [0.20 0.90 1.00];
 col_iT       = [1.00 0.85 0.25];
 
+%{
 % Path tracking
 figure('Color','k');
 set(gca,'Color','k','XColor','w','YColor','w');
@@ -711,6 +714,7 @@ ylabel(ax_progress, 'Path Index', 'Color', 'w');
 legend(ax_progress, [h_dash_i0, h_dash_iT, h_dash_iN], ...
     {'i0', 'iT', 'i_{ref,end}'}, 'TextColor', 'w', 'Location', 'best');
 xlim(ax_progress, [t(1) t(end)]);
+%}
 
 % % MPC intent spatial snapshot
 % fig_intent = figure('Color','k', 'Name', 'MPC Intent', 'Position', [120 120 1400 850]);
