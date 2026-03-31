@@ -2,6 +2,14 @@
 
 This repository contains a MATLAB-based model predictive control (MPC) prototype for truck-trailer path tracking. The current codebase is set up as a research and debugging workspace rather than a packaged software release: the main script builds a reference path, linearizes and discretizes the vehicle model, solves a finite-horizon QP with qpOASES, simulates the closed-loop response, and exports logs and figures for offline analysis.
 
+![Truck-trailer vehicle model](docs/readme-assets/Vehicle_Model.svg)
+
+Truck-trailer vehicle model used by the controller and kinematic propagation in this repository.
+
+![Example truck-trailer tracking snapshot](docs/readme-assets/example-run.svg)
+
+Example simulation snapshot exported by `script_MPC_Rev1.m` during a debug run.
+
 ## Current Status
 
 This project is in progress and is primarily organized for experimentation, controller iteration, and debugging. Expect active development, hard-coded scenario settings in the main script, and rough edges around setup and reproducibility.
@@ -57,3 +65,4 @@ The saved MAT file includes controller and simulation logs, the generated path, 
 - Scenario selection is configured directly in the script instead of through a separate config file or UI.
 - Supported built-in path scenarios currently include `merge`, `line`, `circle`, `figure8`, and `parkingfr`.
 - The README intentionally avoids claiming exact MATLAB version or toolbox support because those requirements are not yet documented in the repo.
+
