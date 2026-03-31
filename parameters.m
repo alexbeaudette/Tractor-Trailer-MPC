@@ -21,7 +21,7 @@ classdef parameters
         umax =  pi/6;
 
         % Steering rate constraint
-        max_steer_rate = deg2rad(25); % rad/s
+        max_steer_rate = deg2rad(20); % rad/s
         delta_umin = -parameters.Ts * parameters.max_steer_rate;
         delta_umax =  parameters.Ts * parameters.max_steer_rate;
 
